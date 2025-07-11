@@ -22,9 +22,9 @@ import {
   UserStreak, 
   UserAchievement, 
   Achievement 
-} from '../../lib/database';
-import { useAuth } from '../../hooks/useAuth';
-import TargetedAdContainer from '../advertisements/TargetedAdContainer';
+} from '../../../lib/database';
+import { useAuth } from '../../../hooks/useAuth';
+import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 const Gamification: React.FC = () => {
   const { user } = useAuth();

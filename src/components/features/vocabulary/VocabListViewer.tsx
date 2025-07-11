@@ -20,9 +20,9 @@ import {
 import { 
   getUserVocabList,
   removeWordFromVocabList
-} from '../lib/database';
-import { VocabListItem } from '../types/flashcard';
-import { useAuth } from '../hooks/useAuth';
+} from '../../../lib/database';
+import { VocabListItem } from '../../../types/flashcard';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface VocabListViewerProps {
   onBack: () => void;

@@ -25,9 +25,9 @@ import {
   getAdminAnalytics,
   UserAnalytics, 
   AdminAnalytics 
-} from '../../lib/database';
-import { useAuth } from '../../hooks/useAuth';
-import TargetedAdContainer from '../advertisements/TargetedAdContainer';
+} from '../../../lib/database';
+import { useAuth } from '../../../hooks/useAuth';
+import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 interface AnalyticsProps {
   userRole: 'user' | 'admin' | 'super_admin';

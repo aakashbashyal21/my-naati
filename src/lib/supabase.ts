@@ -3,8 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key exists:', !!supabaseAnonKey);
+if (process.env.NODE_ENV === 'development') {
+  console.log('Supabase configured:', !!supabaseUrl);
+}
+if (process.env.NODE_ENV === 'development') {
+  console.log('Supabase Key exists:', !!supabaseAnonKey);
+}
 
 // Check if environment variables are properly configured
 const isValidUrl = (url: string) => {
@@ -35,16 +39,20 @@ const isSupabaseConfigured =
   isValidUrl(supabaseUrl) &&
   isValidKey(supabaseAnonKey);
 
-console.log('Supabase configured:', isSupabaseConfigured);
+if (process.env.NODE_ENV === 'development') {
+  console.log('Supabase configured:', isSupabaseConfigured);
+}
 
 if (!isSupabaseConfigured) {
-  console.warn('Supabase configuration check failed:', {
-    hasUrl: !!supabaseUrl,
-    hasKey: !!supabaseAnonKey,
-    urlValid: isValidUrl(supabaseUrl || ''),
-    keyValid: isValidKey(supabaseAnonKey || ''),
-    url: supabaseUrl
-  });
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('Supabase configuration check failed:', {
+      hasUrl: !!supabaseUrl,
+      hasKey: !!supabaseAnonKey,
+      urlValid: isValidUrl(supabaseUrl || ''),
+      keyValid: isValidKey(supabaseAnonKey || ''),
+      url: supabaseUrl
+    });
+  }
 }
 
 // Only create the client if Supabase is properly configured

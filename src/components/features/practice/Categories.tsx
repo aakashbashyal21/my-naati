@@ -19,10 +19,10 @@ import {
   TestSet, 
   Flashcard,
   TestSetProgress
-} from '../../lib/database';
-import PracticeSession from '../practice/PracticeSession';
-import { useAuth } from '../../hooks/useAuth';
-import TargetedAdContainer from '../advertisements/TargetedAdContainer';
+} from '../../../lib/database';
+import PracticeSession from '../../practice/PracticeSession';
+import { useAuth } from '../../../hooks/useAuth';
+import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 const Categories: React.FC = () => {
   const { user } = useAuth();

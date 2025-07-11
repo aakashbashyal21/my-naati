@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   BookOpen, 
   User, 
   LogOut, 
   Settings, 
   BarChart3,
-  FolderOpen,
   Crown,
   Megaphone,
   Trophy,
@@ -27,18 +27,17 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ 
   user, 
   onSignOut, 
-  currentView, 
-  onViewChange,
   isMobileMenuOpen,
   onMobileMenuToggle
 }) => {
+  const location = useLocation();
   // Check if user has admin privileges
   const [userRole, setUserRole] = useState<string>('user');
   
   React.useEffect(() => {
     const checkUserRole = async () => {
       try {
-        const { getUserProfile } = await import('../../lib/database');
+        const { getUserProfile } = await import('../../../lib/database');
         const profile = await getUserProfile(user.id);
         setUserRole(profile?.role || 'user');
       } catch (error) {
@@ -52,17 +51,17 @@ const Sidebar: React.FC<SidebarProps> = ({
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'practice', label: 'Practice', icon: BookOpen },
-    { id: 'vocab-list', label: 'My Vocab List', icon: List },
-    { id: 'achievements', label: 'Achievements', icon: Trophy },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/dashboard' },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics' },
+    { id: 'practice', label: 'Practice', icon: BookOpen, path: '/dashboard/practice' },
+    { id: 'vocab-list', label: 'My Vocab List', icon: List, path: '/dashboard/vocab-list' },
+    { id: 'achievements', label: 'Achievements', icon: Trophy, path: '/dashboard/achievements' },
   ];
 
   const adminItems = [
-    { id: 'admin', label: 'Admin Panel', icon: Crown },
-    { id: 'ads', label: 'Advertisements', icon: Megaphone },
-    { id: 'ad-analytics', label: 'Ad Analytics', icon: BarChart3 },
+    { id: 'admin', label: 'Admin Panel', icon: Crown, path: '/dashboard/admin' },
+    { id: 'ads', label: 'Advertisements', icon: Megaphone, path: '/dashboard/ads' },
+    { id: 'ad-analytics', label: 'Ad Analytics', icon: BarChart3, path: '/dashboard/ad-analytics' },
   ];
 
   return (
@@ -109,13 +108,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive = location.pathname === item.path;
             
             return (
-              <button
+              <Link
                 key={item.id}
+                to={item.path}
                 onClick={() => {
-                  onViewChange(item.id);
                   // Close mobile menu when item is selected
                   if (window.innerWidth < 1024) {
                     onMobileMenuToggle();
@@ -131,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <Icon className="h-5 w-5" />
                 <span className="font-medium">{item.label}</span>
-              </button>
+              </Link>
             );
           })}
         </div>
@@ -145,13 +144,13 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="space-y-2 mt-2">
               {adminItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentView === item.id;
+                const isActive = location.pathname === item.path;
                 
                 return (
-                  <button
+                  <Link
                     key={item.id}
+                    to={item.path}
                     onClick={() => {
-                      onViewChange(item.id);
                       // Close mobile menu when item is selected
                       if (window.innerWidth < 1024) {
                         onMobileMenuToggle();
@@ -167,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   >
                     <Icon className="h-5 w-5" />
                     <span className="font-medium">{item.label}</span>
-                  </button>
+                  </Link>
                 );
               })}
             </div>
@@ -193,9 +192,9 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
         
         <div className="space-y-2">
-          <button
+          <Link
+            to="/dashboard/settings"
             onClick={() => {
-              onViewChange('settings');
               if (window.innerWidth < 1024) {
                 onMobileMenuToggle();
               }
@@ -204,7 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           >
             <Settings className="h-4 w-4" />
             <span className="text-sm">Settings</span>
-          </button>
+          </Link>
           
           <button
             onClick={onSignOut}

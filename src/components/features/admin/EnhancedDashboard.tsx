@@ -28,9 +28,9 @@ import {
   TestSetProgress,
   getUserAnalytics,
   UserAnalytics
-} from '../../lib/database';
-import { useAuth } from '../../hooks/useAuth';
-import TargetedAdContainer from '../advertisements/TargetedAdContainer';
+} from '../../../lib/database';
+import { useAuth } from '../../../hooks/useAuth';
+import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 interface NotificationItem {
   id: string;

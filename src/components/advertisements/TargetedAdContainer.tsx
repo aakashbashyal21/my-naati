@@ -17,6 +17,7 @@ import {
   addAdDisclosure
 } from '../../lib/adCompliance';
 import { useAuth } from '../../hooks/useAuth';
+import { sanitizeHtml } from '../../utils/sanitization';
 
 interface TargetedAdContainerProps {
   placement: Advertisement['placement'];
@@ -242,7 +243,6 @@ const ResponsiveAdComponent: React.FC<ResponsiveAdComponentProps> = ({
           maxWidth: '300px',
         };
       case 'modal':
-      case 'popover':
         return {
           ...baseStyles,
           position: 'fixed' as const,
@@ -319,7 +319,7 @@ const ResponsiveAdComponent: React.FC<ResponsiveAdComponentProps> = ({
           ) : advertisement.content_html ? (
             <div 
               className="w-full h-full flex items-center justify-center p-4 bg-gradient-to-br from-blue-50 to-purple-50"
-              dangerouslySetInnerHTML={{ __html: advertisement.content_html }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(advertisement.content_html) }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center p-4 bg-gradient-to-br from-gray-100 to-gray-200">

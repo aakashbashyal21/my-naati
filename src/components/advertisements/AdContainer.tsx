@@ -9,6 +9,7 @@ import {
   generateSessionId
 } from '../../lib/advertisements';
 import { useAuth } from '../../hooks/useAuth';
+import { sanitizeHtml } from '../../utils/sanitization';
 
 interface AdContainerProps {
   placement: Advertisement['placement'];
@@ -219,7 +220,7 @@ const AdComponent: React.FC<AdComponentProps> = ({ advertisement, onClose, onCli
           ) : advertisement.content_html ? (
             <div 
               className="w-full h-full flex items-center justify-center p-4"
-              dangerouslySetInnerHTML={{ __html: advertisement.content_html }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(advertisement.content_html) }}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center p-4 bg-gray-100">
