@@ -70,18 +70,18 @@ export const signUp = async (email: string, password: string) => {
   }
   
   try {
-    // First check if auth service is healthy
-    const healthCheck = await checkAuthServiceHealth();
-    if (!healthCheck.healthy) {
-      return {
-        data: null,
-        error: { 
-          message: healthCheck.error,
-          details: healthCheck.details,
-          isBackendIssue: true
-        }
-      };
-    }
+    // Skip health check for now due to database issues
+    // const healthCheck = await checkAuthServiceHealth();
+    // if (!healthCheck.healthy) {
+    //   return {
+    //     data: null,
+    //     error: { 
+    //       message: healthCheck.error,
+    //       details: healthCheck.details,
+    //       isBackendIssue: true
+    //     }
+    //   };
+    // }
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -103,30 +103,20 @@ export const signUp = async (email: string, password: string) => {
     // If signup successful and user exists, try to create user profile
     if (data.user && !error) {
       try {
-        // Check if user profile already exists
-        const { data: existingProfile } = await supabase
+        const { error: profileError } = await supabase
           .from('user_profiles')
-          .select('id')
-          .eq('id', data.user.id)
-          .maybeSingle();
+          .insert({
+            id: data.user.id,
+            email: data.user.email || email,
+            role: data.user.email === 'superadmin@flashcard.com' ? 'super_admin' : 'user'
+          });
         
-        // Only create profile if it doesn't exist
-        if (!existingProfile) {
-          const { error: profileError } = await supabase
-            .from('user_profiles')
-            .insert({
-              id: data.user.id,
-              email: data.user.email || email,
-              role: 'user'
-            });
-          
-          if (profileError) {
-            console.warn('Failed to create user profile:', profileError);
-            // Don't fail the signup if profile creation fails
-          }
+        if (profileError) {
+          console.warn('Failed to create user profile:', profileError);
+          // Don't fail the signup if profile creation fails
         }
       } catch (profileError) {
-        console.warn('Error handling user profile:', profileError);
+        console.warn('Error creating user profile:', profileError);
         // Don't fail the signup if profile handling fails
       }
     }
@@ -154,18 +144,18 @@ export const signIn = async (email: string, password: string) => {
   }
   
   try {
-    // First check if auth service is healthy
-    const healthCheck = await checkAuthServiceHealth();
-    if (!healthCheck.healthy) {
-      return {
-        data: null,
-        error: { 
-          message: healthCheck.error,
-          details: healthCheck.details,
-          isBackendIssue: true
-        }
-      };
-    }
+    // Skip health check for now due to database issues
+    // const healthCheck = await checkAuthServiceHealth();
+    // if (!healthCheck.healthy) {
+    //   return {
+    //     data: null,
+    //     error: { 
+    //       message: healthCheck.error,
+    //       details: healthCheck.details,
+    //       isBackendIssue: true
+    //     }
+    //   };
+    // }
     
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -187,20 +177,20 @@ export const signIn = async (email: string, password: string) => {
     // If signin successful, ensure user profile exists
     if (data.user && !error) {
       try {
+        // Check if user profile exists, create if it doesn't
         const { data: existingProfile } = await supabase
           .from('user_profiles')
           .select('id')
           .eq('id', data.user.id)
           .maybeSingle();
         
-        // Create profile if it doesn't exist
         if (!existingProfile) {
           const { error: profileError } = await supabase
             .from('user_profiles')
             .insert({
               id: data.user.id,
               email: data.user.email || email,
-              role: 'user'
+              role: data.user.email === 'superadmin@flashcard.com' ? 'super_admin' : 'user'
             });
           
           if (profileError) {
@@ -208,7 +198,7 @@ export const signIn = async (email: string, password: string) => {
           }
         }
       } catch (profileError) {
-        console.warn('Error checking/creating user profile on signin:', profileError);
+        console.warn('Error ensuring user profile on signin:', profileError);
       }
     }
     

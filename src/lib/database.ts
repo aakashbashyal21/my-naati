@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { VocabListItem } from '../types/flashcard';
+import { Language, UserLanguage } from '../types/language';
 
 export interface UserProfile {
   id: string;
@@ -14,8 +15,15 @@ export interface Category {
   name: string;
   description: string | null;
   created_by: string | null;
+  language_id: string;
   created_at: string;
   updated_at: string;
+  language?: {
+    name: string;
+    code: string;
+    flag_emoji?: string;
+  };
+  test_set_count?: number;
 }
 
 export interface TestSet {
@@ -24,9 +32,15 @@ export interface TestSet {
   name: string;
   description: string | null;
   created_by: string | null;
+  language_id: string;
   created_at: string;
   updated_at: string;
   category?: Category;
+  language?: {
+    name: string;
+    code: string;
+    flag_emoji?: string;
+  };
   flashcard_count?: number;
 }
 
@@ -35,6 +49,7 @@ export interface Flashcard {
   test_set_id: string;
   english: string;
   translation: string;
+  language_id: string;
   created_at: string;
 }
 
@@ -207,25 +222,44 @@ export const getCategories = async (): Promise<Category[]> => {
   
   const { data, error } = await supabase
     .from('categories')
-    .select('*')
+    .select(`
+      *,
+      language:languages(name, code, flag_emoji)
+    `)
     .order('created_at', { ascending: false });
   
   if (error) throw error;
   return data || [];
 };
 
-export const createCategory = async (name: string, description: string): Promise<Category> => {
+export const createCategory = async (name: string, description: string, languageId?: string): Promise<Category> => {
   if (!supabase) throw new Error('Supabase not configured');
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
+  
+  // If no languageId provided, default to English
+  let finalLanguageId = languageId;
+  if (!finalLanguageId) {
+    const { data: englishLang } = await supabase
+      .from('languages')
+      .select('id')
+      .eq('code', 'en')
+      .single();
+    finalLanguageId = englishLang?.id;
+  }
+  
+  if (!finalLanguageId) {
+    throw new Error('No language specified and English language not found');
+  }
   
   const { data, error } = await supabase
     .from('categories')
     .insert({
       name,
       description,
-      created_by: user.id
+      created_by: user.id,
+      language_id: finalLanguageId
     })
     .select()
     .single();
@@ -290,12 +324,28 @@ export const getTestSets = async (categoryId?: string): Promise<TestSet[]> => {
 export const createTestSet = async (
   categoryId: string, 
   name: string, 
-  description: string
+  description: string,
+  languageId?: string
 ): Promise<TestSet> => {
   if (!supabase) throw new Error('Supabase not configured');
   
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('User not authenticated');
+  
+  // If no languageId provided, get it from the category
+  let finalLanguageId = languageId;
+  if (!finalLanguageId) {
+    const { data: category } = await supabase
+      .from('categories')
+      .select('language_id')
+      .eq('id', categoryId)
+      .single();
+    finalLanguageId = category?.language_id;
+  }
+  
+  if (!finalLanguageId) {
+    throw new Error('No language specified and category language not found');
+  }
   
   const { data, error } = await supabase
     .from('test_sets')
@@ -303,7 +353,8 @@ export const createTestSet = async (
       category_id: categoryId,
       name,
       description,
-      created_by: user.id
+      created_by: user.id,
+      language_id: finalLanguageId
     })
     .select()
     .single();
@@ -358,14 +409,31 @@ export const getFlashcards = async (testSetId: string): Promise<Flashcard[]> => 
 
 export const bulkCreateFlashcards = async (
   testSetId: string, 
-  flashcards: { english: string; translation: string }[]
+  flashcards: { english: string; translation: string }[],
+  languageId?: string
 ): Promise<number> => {
   if (!supabase) throw new Error('Supabase not configured');
+  
+  // If no languageId provided, get it from the test set
+  let finalLanguageId = languageId;
+  if (!finalLanguageId) {
+    const { data: testSet } = await supabase
+      .from('test_sets')
+      .select('language_id')
+      .eq('id', testSetId)
+      .single();
+    finalLanguageId = testSet?.language_id;
+  }
+  
+  if (!finalLanguageId) {
+    throw new Error('No language specified and test set language not found');
+  }
   
   // Convert flashcards array to JSONB format expected by the function
   const csvData = flashcards.map(card => ({
     english: card.english,
-    translation: card.translation
+    translation: card.translation,
+    language_id: finalLanguageId
   }));
   
   const { data, error } = await supabase.rpc('bulk_insert_flashcards', {
@@ -834,4 +902,147 @@ export const isWordInVocabList = async (
   
   if (error) throw error;
   return data || false;
+};
+
+// Language Management Functions
+export const getAllLanguages = async (): Promise<Language[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .from('languages')
+    .select('*')
+    .order('name', { ascending: true });
+  
+  if (error) throw error;
+  return data || [];
+};
+
+export const getActiveLanguages = async (): Promise<Language[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .from('languages')
+    .select('*')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  
+  if (error) throw error;
+  return data || [];
+};
+
+export const createLanguage = async (languageData: {
+  code: string;
+  name: string;
+  native_name?: string;
+  flag_emoji?: string;
+  is_active?: boolean;
+}): Promise<Language> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .from('languages')
+    .insert({
+      ...languageData,
+      is_active: languageData.is_active ?? true
+    })
+    .select()
+    .single();
+  
+  if (error) throw error;
+  return data;
+};
+
+export const updateLanguage = async (
+  id: string,
+  languageData: {
+    code?: string;
+    name?: string;
+    native_name?: string;
+    flag_emoji?: string;
+    is_active?: boolean;
+  }
+): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { error } = await supabase
+    .from('languages')
+    .update({
+      ...languageData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', id);
+  
+  if (error) throw error;
+};
+
+export const deleteLanguage = async (id: string): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { error } = await supabase
+    .from('languages')
+    .delete()
+    .eq('id', id);
+  
+  if (error) throw error;
+};
+
+export const getUserLanguages = async (userId: string): Promise<UserLanguage[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .rpc('get_user_languages', { user_uuid: userId });
+  
+  if (error) throw error;
+  return data || [];
+};
+
+export const setUserLanguageProficiency = async (
+  userId: string,
+  languageId: string,
+  proficiencyLevel: 'beginner' | 'intermediate' | 'advanced' | 'native',
+  isPrimary: boolean = false
+): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  // If setting as primary, unset other primary languages
+  if (isPrimary) {
+    await supabase
+      .from('language_proficiencies')
+      .update({ is_primary: false })
+      .eq('user_id', userId);
+  }
+  
+  const { error } = await supabase
+    .from('language_proficiencies')
+    .update({
+      user_id: userId,
+      language_id: languageId,
+      proficiency_level: proficiencyLevel,
+      is_primary: isPrimary
+    })
+    .eq('user_id', userId)
+    .eq('language_id', languageId);
+  
+  if (error) throw error;
+};
+
+// Language-specific category and test set functions
+export const getCategoriesByLanguage = async (languageId: string): Promise<Category[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .rpc('get_categories_by_language', { lang_id: languageId });
+  
+  if (error) throw error;
+  return data || [];
+};
+
+export const getTestSetsByLanguage = async (languageId: string): Promise<TestSet[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .rpc('get_test_sets_by_language', { lang_id: languageId });
+  
+  if (error) throw error;
+  return data || [];
 };

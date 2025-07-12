@@ -18,6 +18,7 @@ import Settings from '../components/features/admin/Settings';
 import AdminPanel from '../components/features/admin/AdminPanel';
 import AdManagement from '../components/advertisements/AdManagement';
 import AdAnalyticsDashboard from '../components/advertisements/AdAnalyticsDashboard';
+import RoleChecker from '../components/features/admin/RoleChecker';
 
 // Middleware Components
 import ProtectedRoute from './ProtectedRoute';
@@ -106,6 +107,10 @@ const createRouter = (user: any) => {
               <AdminPanel />
             </AdminRoute>
           )
+        },
+        {
+          path: 'role-checker',
+          element: <RoleChecker />
         },
         {
           path: 'ads',

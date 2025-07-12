@@ -1,16 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FolderPlus, Edit3, Trash2, Plus } from 'lucide-react';
-import { Category } from '../../../lib/database';
+import { Category, getActiveLanguages } from '../../../lib/database';
 import { Button } from '../../../components/shared/ui/Button';
 import { Input } from '../../../components/shared/ui/Input';
 import { useToast } from '../../../hooks/useToast';
 import { categoryFormSchema, CategoryFormData } from '../../../utils/validation';
 import { sanitizeInput } from '../../../utils/sanitization';
+import { Language } from '../../../types/language';
 
 interface CategoryManagementProps {
   categories: Category[];
   onRefresh: () => void;
-  onCreateCategory: (data: CategoryFormData) => Promise<void>;
+  onCreateCategory: (data: CategoryFormData & { languageId?: string }) => Promise<void>;
   onUpdateCategory: (id: string, data: CategoryFormData) => Promise<void>;
   onDeleteCategory: (id: string) => Promise<void>;
 }
@@ -25,13 +26,33 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>({ name: '', description: '' });
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
+  const [languages, setLanguages] = useState<Language[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const { showToast } = useToast();
 
+  // Load languages on component mount
+  useEffect(() => {
+    const loadLanguages = async () => {
+      try {
+        const activeLanguages = await getActiveLanguages();
+        setLanguages(activeLanguages);
+        // Default to first language if available
+        if (activeLanguages.length > 0 && !selectedLanguageId) {
+          setSelectedLanguageId(activeLanguages[0]?.id || '');
+        }
+      } catch (error) {
+        showToast('Failed to load languages', 'error');
+      }
+    };
+    loadLanguages();
+  }, [selectedLanguageId, showToast]);
+
   const resetForm = () => {
     setFormData({ name: '', description: '' });
+    setSelectedLanguageId(languages[0]?.id || '');
     setErrors({});
     setEditingCategory(null);
   };
@@ -86,7 +107,7 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({
         await onUpdateCategory(editingCategory.id, sanitizedData);
         showToast('Category updated successfully', 'success');
       } else {
-        await onCreateCategory(sanitizedData);
+        await onCreateCategory({ ...sanitizedData, languageId: selectedLanguageId });
         showToast('Category created successfully', 'success');
       }
       
@@ -137,6 +158,9 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({
                 Description
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Language
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Created
               </th>
               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -152,6 +176,14 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({
                 </td>
                 <td className="px-6 py-4">
                   <div className="text-gray-600">{category.description}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center text-sm text-gray-600">
+                    {category.language?.flag_emoji && (
+                      <span className="mr-2">{category.language.flag_emoji}</span>
+                    )}
+                    <span>{category.language?.name || 'Unknown'}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(category.created_at).toLocaleDateString()}
@@ -191,6 +223,26 @@ export const CategoryManagement: React.FC<CategoryManagementProps> = ({
             </h3>
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
+                {!editingCategory && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Language
+                    </label>
+                    <select
+                      value={selectedLanguageId}
+                      onChange={(e) => setSelectedLanguageId(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select a language</option>
+                      {languages.map((language) => (
+                        <option key={language.id} value={language.id}>
+                          {language.flag_emoji} {language.name} ({language.code})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Name

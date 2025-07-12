@@ -193,13 +193,9 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
   }, [flashcards]);
 
   const nextCard = useCallback(() => {
-    console.log('nextCard called:', { currentIndex, totalCards: shuffledCards.length });
     if (currentIndex < shuffledCards.length - 1) {
-      console.log('Advancing to next card, new index:', currentIndex + 1);
       setIsFlipped(false);
       setCurrentIndex(currentIndex + 1);
-    } else {
-      console.log('Already at last card');
     }
   }, [currentIndex, shuffledCards.length]);
 
@@ -306,22 +302,13 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
   const handleAddToVocabList = async () => {
     if (!user || !currentCard) return;
     
-    console.log('Adding to vocab list:', {
-      userId: user.id,
-      english: currentCard.english,
-      translation: currentCard.translation,
-      cardId: currentCard.id
-    });
-    
     try {
       setAddingToVocabList(true);
       const result = await addWordToVocabList(user.id, currentCard.english, currentCard.translation, currentCard.id);
-      console.log('Vocab list add result:', result);
       setIsInVocabList(true);
       
       // Auto-advance to next card after adding to vocab list
       setTimeout(() => {
-        console.log('Advancing to next card...');
         setIsFlipped(false);
         setTimeout(() => {
           nextCard();
@@ -345,6 +332,8 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
 
   const stats = getProgressStats();
 
+  if (!currentCard) return null;
+
   const getFrontText = () => {
     return isReversed ? currentCard.translation : currentCard.english;
   };
@@ -358,9 +347,8 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
   };
 
   const getCurrentCardStatus = () => {
-    return progress[currentCard?.id]?.status || 'new';
+    return progress[currentCard.id]?.status || 'new';
   };
-  if (!currentCard) return null;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">

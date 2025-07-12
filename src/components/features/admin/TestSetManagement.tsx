@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Edit3, Trash2, Plus, Upload } from 'lucide-react';
-import { TestSet, Category } from '../../../lib/database';
+import { TestSet, Category, getActiveLanguages } from '../../../lib/database';
 import { Button } from '../../../components/shared/ui/Button';
 import { Input } from '../../../components/shared/ui/Input';
 import { useToast } from '../../../hooks/useToast';
 import { testSetFormSchema, TestSetFormData } from '../../../utils/validation';
 import { sanitizeInput } from '../../../utils/sanitization';
+import { Language } from '../../../types/language';
 
 interface TestSetManagementProps {
   testSets: TestSet[];
@@ -32,10 +33,45 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
   const [formData, setFormData] = useState<TestSetFormData>({ categoryId: '', name: '', description: '' });
   const [csvData, setCsvData] = useState<string[][]>([]);
   const [selectedTestSetForUpload, setSelectedTestSetForUpload] = useState<string>('');
+  const [selectedLanguageId, setSelectedLanguageId] = useState<string>('');
+  const [languages, setLanguages] = useState<Language[]>([]);
+  const [filteredCategories, setFilteredCategories] = useState<Category[]>([]);
+  const [filteredTestSets, setFilteredTestSets] = useState<TestSet[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const { showToast } = useToast();
+
+  // Load languages on component mount
+  useEffect(() => {
+    const loadLanguages = async () => {
+      try {
+        const activeLanguages = await getActiveLanguages();
+        setLanguages(activeLanguages);
+        // Default to first language if available
+        if (activeLanguages.length > 0 && !selectedLanguageId) {
+          setSelectedLanguageId(activeLanguages[0]?.id || '');
+        }
+      } catch (error) {
+        showToast('Failed to load languages', 'error');
+      }
+    };
+    loadLanguages();
+  }, []);
+
+  // Filter categories and test sets by selected language
+  useEffect(() => {
+    if (selectedLanguageId) {
+      const filtered = categories.filter(cat => cat.language_id === selectedLanguageId);
+      setFilteredCategories(filtered);
+      
+      const filteredTestSets = testSets.filter(ts => ts.language_id === selectedLanguageId);
+      setFilteredTestSets(filteredTestSets);
+    } else {
+      setFilteredCategories(categories);
+      setFilteredTestSets(testSets);
+    }
+  }, [selectedLanguageId, categories, testSets]);
 
   const resetForm = () => {
     setFormData({ categoryId: '', name: '', description: '' });
@@ -172,6 +208,25 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
         </div>
       </div>
 
+      {/* Language Filter */}
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Filter by Language
+        </label>
+        <select
+          value={selectedLanguageId}
+          onChange={(e) => setSelectedLanguageId(e.target.value)}
+          className="w-64 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+        >
+          <option value="">All Languages</option>
+          {languages.map((language) => (
+            <option key={language.id} value={language.id}>
+              {language.flag_emoji} {language.name} ({language.code})
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
@@ -194,7 +249,7 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {testSets.map((testSet) => (
+            {filteredTestSets.map((testSet) => (
               <tr key={testSet.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="font-medium text-gray-900">{testSet.name}</div>
@@ -257,7 +312,7 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
                     disabled={!!editingTestSet}
                   >
                     <option value="">Select a category</option>
-                    {categories.map((category) => (
+                    {filteredCategories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.name}
                       </option>
@@ -335,7 +390,7 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
                   required
                 >
                   <option value="">Select a test set</option>
-                  {testSets.map((testSet) => (
+                  {filteredTestSets.map((testSet) => (
                     <option key={testSet.id} value={testSet.id}>
                       {testSet.category?.name} - {testSet.name}
                     </option>

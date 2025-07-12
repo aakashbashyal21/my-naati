@@ -9,12 +9,17 @@ interface AdminRouteProps {
 }
 
 const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [userRole, setUserRole] = useState<string>('user');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkUserRole = async () => {
+      // Wait for auth to finish loading
+      if (authLoading) {
+        return;
+      }
+      
       if (!user) {
         setLoading(false);
         return;
@@ -24,7 +29,7 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
         const profile = await getUserProfile(user.id);
         setUserRole(profile?.role || 'user');
       } catch (error) {
-        console.error('Error checking user role:', error);
+        console.error('AdminRoute: Error checking user role:', error);
         setUserRole('user');
       } finally {
         setLoading(false);
@@ -32,15 +37,15 @@ const AdminRoute: React.FC<AdminRouteProps> = ({ children }) => {
     };
 
     checkUserRole();
-  }, [user]);
+  }, [user, authLoading]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return <LoadingSpinner />;
   }
 
   // Check if user has admin privileges
   const isAdmin = userRole === 'admin' || userRole === 'super_admin';
-
+  
   if (!isAdmin) {
     return <Navigate to="/dashboard" replace />;
   }

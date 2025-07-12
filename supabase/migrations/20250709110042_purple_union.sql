@@ -331,7 +331,7 @@ BEGIN
         )
         SELECT 
             a.id,
-            'session_' || generate_random_uuid()::text,
+            'session_' || gen_random_uuid()::text,
             'Mozilla/5.0 (compatible; Sample/1.0)',
             'https://example.com/dashboard',
             a.placement,

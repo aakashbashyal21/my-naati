@@ -20,6 +20,7 @@ import { csvToFlashcards } from '../../../utils/csvParser';
 import { CategoryManagement } from './CategoryManagement';
 import { TestSetManagement } from './TestSetManagement';
 import { UserManagement } from './UserManagement';
+import LanguageManagement from './LanguageManagement';
 import { AdminTabs, AdminTab } from './AdminTabs';
 import LoadingSpinner from '../../shared/ui/LoadingSpinner';
 import ErrorBoundary from '../../shared/ui/ErrorBoundary';
@@ -55,7 +56,7 @@ const AdminPanel: React.FC = () => {
       setTestSets(testSetsData);
       setUsers(usersData);
     } catch (err) {
-      console.error('Error loading admin data:', err);
+      console.error('AdminPanel: Error loading admin data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
       setError(errorMessage);
       showToast(errorMessage, 'error');
@@ -65,8 +66,8 @@ const AdminPanel: React.FC = () => {
   };
 
   // Category handlers
-  const handleCreateCategory = async (data: CategoryFormData) => {
-    await createCategory(data.name, data.description || '');
+  const handleCreateCategory = async (data: CategoryFormData & { languageId?: string }) => {
+    await createCategory(data.name, data.description || '', data.languageId);
     await loadData();
   };
 
@@ -107,6 +108,8 @@ const AdminPanel: React.FC = () => {
     await updateUserRole(userId, role);
     await loadData();
   };
+
+
 
   if (loading) {
     return (
@@ -173,6 +176,10 @@ const AdminPanel: React.FC = () => {
             users={users}
             onUpdateUserRole={handleUpdateUserRole}
           />
+        )}
+
+        {activeTab === 'languages' && (
+          <LanguageManagement />
         )}
       </div>
     </ErrorBoundary>

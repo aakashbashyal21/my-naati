@@ -10,8 +10,8 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { 
-  getCategories, 
-  getTestSets, 
+  getCategoriesByLanguage, 
+  getTestSetsByLanguage, 
   getFlashcards, 
   getUserStatsDetailed,
   initializeUserProgress,
@@ -22,10 +22,12 @@ import {
 } from '../../../lib/database';
 import PracticeSession from '../../practice/PracticeSession';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 const Categories: React.FC = () => {
   const { user } = useAuth();
+  const { selectedLanguageId, isLoading: languageLoading } = useLanguage();
   const [categories, setCategories] = useState<Category[]>([]);
   const [testSetsByCategory, setTestSetsByCategory] = useState<Record<string, TestSet[]>>({});
   const [progressByTestSet, setProgressByTestSet] = useState<Record<string, TestSetProgress>>({});
@@ -38,35 +40,40 @@ const Categories: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
+    console.log('Categories useEffect:', { user: !!user, selectedLanguageId, languageLoading });
+    
     const loadData = async () => {
-      if (!user) return;
+      if (!user || !selectedLanguageId || languageLoading) return;
       
       try {
         setLoading(true);
         setError(null);
         
-        // Load categories, test sets, and user progress
+        // Load categories, test sets, and user progress for the selected language
         const [categoriesData, testSetsData, progressData] = await Promise.all([
-          getCategories(),
-          getTestSets(),
+          getCategoriesByLanguage(selectedLanguageId!),
+          getTestSetsByLanguage(selectedLanguageId!),
           getUserStatsDetailed(user.id)
         ]);
         
         setCategories(categoriesData);
         
         // Group test sets by category
-        const grouped = testSetsData.reduce((acc, testSet) => {
-          if (!acc[testSet.category_id]) {
-            acc[testSet.category_id] = [];
+        const grouped = testSetsData.reduce((acc: Record<string, TestSet[]>, testSet: TestSet) => {
+          const categoryId = testSet.category_id;
+          if (categoryId) {
+            if (!acc[categoryId]) {
+              acc[categoryId] = [];
+            }
+            acc[categoryId].push(testSet);
           }
-          acc[testSet.category_id].push(testSet);
           return acc;
         }, {} as Record<string, TestSet[]>);
         
         setTestSetsByCategory(grouped);
         
         // Group progress by test set
-        const progressGrouped = progressData.reduce((acc, progress) => {
+        const progressGrouped = progressData.reduce((acc: Record<string, TestSetProgress>, progress: TestSetProgress) => {
           acc[progress.test_set_id] = progress;
           return acc;
         }, {} as Record<string, TestSetProgress>);
@@ -81,7 +88,7 @@ const Categories: React.FC = () => {
     };
 
     loadData();
-  }, [user]);
+  }, [user, selectedLanguageId, languageLoading]);
 
   const startPractice = async (testSet: TestSet) => {
     if (!user) return;
@@ -117,7 +124,7 @@ const Categories: React.FC = () => {
     if (user) {
       try {
         const progressData = await getUserStatsDetailed(user.id);
-        const progressGrouped = progressData.reduce((acc, progress) => {
+        const progressGrouped = progressData.reduce((acc: Record<string, TestSetProgress>, progress: TestSetProgress) => {
           acc[progress.test_set_id] = progress;
           return acc;
         }, {} as Record<string, TestSetProgress>);
@@ -163,12 +170,38 @@ const Categories: React.FC = () => {
     };
   };
 
+  if (languageLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="flex items-center space-x-3">
+          <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+          <span className="text-gray-600">Loading language preferences...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="p-8 flex items-center justify-center">
         <div className="flex items-center space-x-3">
           <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
           <span className="text-gray-600">Loading categories...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedLanguageId) {
+    return (
+      <div className="p-8">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <p className="text-yellow-800">
+            {languageLoading 
+              ? 'Loading language preferences...' 
+              : 'Please select a language from the dropdown in the header to view categories.'
+            }
+          </p>
         </div>
       </div>
     );
@@ -189,17 +222,17 @@ const Categories: React.FC = () => {
       <div className="p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Categories</h1>
-          <p className="text-gray-600">Browse and practice different vocabulary categories</p>
+          <p className="text-gray-600">Browse and practice different vocabulary categories for your selected language</p>
         </div>
         
         <div className="text-center py-12">
           <FolderOpen className="h-16 w-16 mx-auto mb-4 text-gray-300" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">No categories available</h3>
           <p className="text-gray-600 mb-4">
-            Categories and test sets need to be created by an administrator.
+            No categories have been created for this language yet.
           </p>
           <p className="text-sm text-gray-500">
-            Contact your administrator to add learning content.
+            Contact your administrator to add learning content for this language, or try selecting a different language.
           </p>
         </div>
       </div>
@@ -221,7 +254,7 @@ const Categories: React.FC = () => {
       
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Categories</h1>
-        <p className="text-gray-600">Browse and practice different vocabulary categories</p>
+        <p className="text-gray-600">Browse and practice different vocabulary categories for your selected language</p>
       </div>
 
       <div className="flex gap-8">

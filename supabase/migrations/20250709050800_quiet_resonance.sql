@@ -16,9 +16,14 @@
     - Add new non-recursive policies for admin access
 */
 
--- Drop the problematic recursive policies
-DROP POLICY IF EXISTS "Super admins can read all profiles" ON user_profiles;
-DROP POLICY IF EXISTS "Super admins can update user roles" ON user_profiles;
+-- Drop the problematic recursive policies (only if table exists)
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
+    DROP POLICY IF EXISTS "Super admins can read all profiles" ON user_profiles;
+    DROP POLICY IF EXISTS "Super admins can update user roles" ON user_profiles;
+  END IF;
+END $$;
 
 -- Create new non-recursive policies for admin access
 -- Note: These policies will be more restrictive initially to avoid recursion
@@ -32,17 +37,22 @@ DROP POLICY IF EXISTS "Super admins can update user roles" ON user_profiles;
 
 -- For now, we'll create a simple policy that allows reading all profiles
 -- but only for authenticated users (admins can be managed separately)
-CREATE POLICY "Authenticated users can read profiles for admin checks"
-  ON user_profiles
-  FOR SELECT
-  TO authenticated
-  USING (true);
+DO $$
+BEGIN
+  IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'user_profiles') THEN
+    CREATE POLICY "Authenticated users can read profiles for admin checks"
+      ON user_profiles
+      FOR SELECT
+      TO authenticated
+      USING (true);
 
--- Create a policy for service role to update user roles
--- This will be used by admin functions that use service role key
-CREATE POLICY "Service role can update user roles"
-  ON user_profiles
-  FOR UPDATE
-  TO service_role
-  USING (true)
-  WITH CHECK (true);
+    -- Create a policy for service role to update user roles
+    -- This will be used by admin functions that use service role key
+    CREATE POLICY "Service role can update user roles"
+      ON user_profiles
+      FOR UPDATE
+      TO service_role
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;
