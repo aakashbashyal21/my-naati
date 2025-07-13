@@ -137,7 +137,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
   }
 
   return (
-    <div className="p-8">
+    <div className="w-full max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 py-8">
       {/* Header Advertisement */}
       <TargetedAdContainer 
         placement="header" 
@@ -170,9 +170,6 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
 
       <div className="flex gap-8">
         {/* Left Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_left" />
-        </div>
         
         {/* Main Content */}
         <div className="flex-1">
@@ -788,9 +785,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
         </div>
         
         {/* Right Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_right" />
-        </div>
+        
       </div>
       
       {/* Footer Advertisement */}

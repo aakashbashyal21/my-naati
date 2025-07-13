@@ -101,7 +101,7 @@ const Dashboard: React.FC = () => {
   const streakDays = calculateStreak();
 
   return (
-    <div className="p-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Header Advertisement */}
       <TargetedAdContainer 
         placement="header" 
@@ -169,16 +169,13 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
         {/* Left Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_left" />
-        </div>
         
         {/* Main Content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
       {/* Recent Activity and Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-8">
         {/* Progress Overview */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center space-x-3 mb-6">
@@ -270,9 +267,7 @@ const Dashboard: React.FC = () => {
         </div>
         
         {/* Right Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_right" />
-        </div>
+       
       </div>
       
       {/* Footer Advertisement */}

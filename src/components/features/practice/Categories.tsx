@@ -390,7 +390,7 @@ const Categories: React.FC = () => {
               <BookOpen className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold text-gray-900">Practice Dashboard</h1>
+              <h1 className="text-4xl font-bold text-gray-900">Vocab Practice Dashboard</h1>
               <p className="text-gray-600">Master vocabulary through interactive practice sessions</p>
             </div>
           </div>

@@ -282,7 +282,7 @@ const EnhancedDashboard: React.FC = () => {
       {/* Header with Actions */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Enhanced Dashboard</h1>
+          <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600">Track your learning progress and optimize your NAATI preparation</p>
         </div>
         
@@ -381,9 +381,7 @@ const EnhancedDashboard: React.FC = () => {
 
       <div className="flex gap-8">
         {/* Left Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_left" />
-        </div>
+        
         
         {/* Main Content */}
         <div className="flex-1 space-y-6">
@@ -581,9 +579,7 @@ const EnhancedDashboard: React.FC = () => {
         </div>
         
         {/* Right Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_right" />
-        </div>
+        
       </div>
       
       {/* Footer Advertisement */}

@@ -243,9 +243,7 @@ const Gamification: React.FC = () => {
 
       <div className="flex gap-8">
         {/* Left Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_left" />
-        </div>
+       
         
         {/* Main Content */}
         <div className="flex-1">
@@ -383,9 +381,7 @@ const Gamification: React.FC = () => {
         </div>
         
         {/* Right Sidebar Advertisement */}
-        <div className="w-64 flex-shrink-0 hidden lg:block">
-          <TargetedAdContainer placement="sidebar_right" />
-        </div>
+        
       </div>
       
       {/* Footer Advertisement */}

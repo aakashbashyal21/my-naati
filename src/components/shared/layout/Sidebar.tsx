@@ -53,7 +53,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/dashboard' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics' },
-    { id: 'practice', label: 'Practice', icon: BookOpen, path: '/dashboard/practice' },
+    { id: 'practice', label: 'Vocab Practice', icon: BookOpen, path: '/dashboard/practice' },
     { id: 'vocab-list', label: 'My Vocab List', icon: List, path: '/dashboard/vocab-list' },
     { id: 'achievements', label: 'Achievements', icon: Trophy, path: '/dashboard/achievements' },
   ];
