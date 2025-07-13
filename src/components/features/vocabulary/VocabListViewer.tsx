@@ -18,11 +18,12 @@ import {
   Loader2
 } from 'lucide-react';
 import { 
-  getUserVocabList,
+  getUserVocabListByLanguage,
   removeWordFromVocabList
 } from '../../../lib/database';
 import { VocabListItem } from '../../../types/flashcard';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface VocabListViewerProps {
   onBack: () => void;
@@ -30,6 +31,7 @@ interface VocabListViewerProps {
 
 const VocabListViewer: React.FC<VocabListViewerProps> = ({ onBack }) => {
   const { user } = useAuth();
+  const { selectedLanguageId, isLoading: languageLoading } = useLanguage();
   const [vocabItems, setVocabItems] = useState<VocabListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,16 +45,16 @@ const VocabListViewer: React.FC<VocabListViewerProps> = ({ onBack }) => {
 
   useEffect(() => {
     loadVocabList();
-  }, [user]);
+  }, [user, selectedLanguageId, languageLoading]);
 
   const loadVocabList = async () => {
-    if (!user) return;
+    if (!user || !selectedLanguageId || languageLoading) return;
     
     try {
       setLoading(true);
       setError(null);
       
-      const items = await getUserVocabList(user.id);
+      const items = await getUserVocabListByLanguage(user.id, selectedLanguageId);
       setVocabItems(items);
       setShuffledItems(items);
     } catch (err) {

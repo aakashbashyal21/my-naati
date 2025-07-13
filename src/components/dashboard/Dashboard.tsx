@@ -10,18 +10,20 @@ import {
   Play
 } from 'lucide-react';
 import { 
-  getUserStats, 
-  getUserStatsDetailed, 
-  getTestSets, 
+  getUserStatsByLanguage, 
+  getUserStatsDetailedByLanguage, 
+  getTestSetsByLanguage, 
   UserStats, 
   TestSet,
   TestSetProgress
 } from '../../lib/database';
 import { useAuth } from '../../hooks/useAuth';
+import { useLanguage } from '../../contexts/LanguageContext';
 import TargetedAdContainer from '../advertisements/TargetedAdContainer';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const { selectedLanguageId, isLoading: languageLoading } = useLanguage();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [detailedStats, setDetailedStats] = useState<TestSetProgress[]>([]);
   const [recentTestSets, setRecentTestSets] = useState<TestSet[]>([]);
@@ -30,17 +32,17 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      if (!user) return;
+      if (!user || !selectedLanguageId || languageLoading) return;
       
       try {
         setLoading(true);
         setError(null);
         
-        // Load user stats, detailed stats, and recent test sets in parallel
+        // Load user stats, detailed stats, and recent test sets in parallel for the selected language
         const [userStats, detailedUserStats, testSets] = await Promise.all([
-          getUserStats(user.id),
-          getUserStatsDetailed(user.id),
-          getTestSets()
+          getUserStatsByLanguage(user.id, selectedLanguageId),
+          getUserStatsDetailedByLanguage(user.id, selectedLanguageId),
+          getTestSetsByLanguage(selectedLanguageId)
         ]);
         
         setStats(userStats);
@@ -55,7 +57,7 @@ const Dashboard: React.FC = () => {
     };
 
     loadDashboardData();
-  }, [user]);
+  }, [user, selectedLanguageId, languageLoading]);
 
   const calculateStreak = () => {
     // TODO: Implement actual streak calculation based on last_reviewed dates

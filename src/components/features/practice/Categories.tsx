@@ -13,7 +13,7 @@ import {
   getCategoriesByLanguage, 
   getTestSetsByLanguage, 
   getFlashcards, 
-  getUserStatsDetailed,
+  getUserStatsDetailedByLanguage,
   initializeUserProgress,
   Category, 
   TestSet, 
@@ -53,7 +53,7 @@ const Categories: React.FC = () => {
         const [categoriesData, testSetsData, progressData] = await Promise.all([
           getCategoriesByLanguage(selectedLanguageId!),
           getTestSetsByLanguage(selectedLanguageId!),
-          getUserStatsDetailed(user.id)
+          getUserStatsDetailedByLanguage(user.id, selectedLanguageId!)
         ]);
         
         setCategories(categoriesData);
@@ -121,9 +121,9 @@ const Categories: React.FC = () => {
     setPracticeSession(null);
     
     // Reload progress data when exiting practice
-    if (user) {
+    if (user && selectedLanguageId) {
       try {
-        const progressData = await getUserStatsDetailed(user.id);
+        const progressData = await getUserStatsDetailedByLanguage(user.id, selectedLanguageId);
         const progressGrouped = progressData.reduce((acc: Record<string, TestSetProgress>, progress: TestSetProgress) => {
           acc[progress.test_set_id] = progress;
           return acc;

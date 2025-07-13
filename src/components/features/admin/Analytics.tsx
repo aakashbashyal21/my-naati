@@ -21,12 +21,13 @@ import {
   UserCheck
 } from 'lucide-react';
 import { 
-  getUserAnalytics, 
+  getUserAnalyticsByLanguage, 
   getAdminAnalytics,
   UserAnalytics, 
   AdminAnalytics 
 } from '../../../lib/database';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 interface AnalyticsProps {
@@ -35,6 +36,7 @@ interface AnalyticsProps {
 
 const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
   const { user } = useAuth();
+  const { selectedLanguageId, isLoading: languageLoading } = useLanguage();
   const [userAnalytics, setUserAnalytics] = useState<UserAnalytics | null>(null);
   const [adminAnalytics, setAdminAnalytics] = useState<AdminAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,14 +44,14 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
 
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!user) return;
+      if (!user || !selectedLanguageId || languageLoading) return;
       
       try {
         setLoading(true);
         setError(null);
         
-        // Always load user analytics (personal progress)
-        const userAnalyticsData = await getUserAnalytics(user.id);
+        // Always load user analytics (personal progress) for the selected language
+        const userAnalyticsData = await getUserAnalyticsByLanguage(user.id, selectedLanguageId);
         setUserAnalytics(userAnalyticsData);
         
         // Only load admin analytics for super admins
@@ -66,7 +68,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
     };
 
     loadAnalytics();
-  }, [user, userRole]);
+  }, [user, userRole, selectedLanguageId, languageLoading]);
 
   const getIconForAchievement = (iconName: string) => {
     const iconMap: Record<string, React.ComponentType<any>> = {

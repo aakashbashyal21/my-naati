@@ -483,11 +483,62 @@ export const getUserStats = async (userId: string): Promise<UserStats> => {
   };
 };
 
+export const getUserStatsByLanguage = async (userId: string, languageId: string): Promise<UserStats> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase.rpc('get_user_stats_by_language', {
+    user_uuid: userId,
+    language_uuid: languageId
+  });
+  
+  if (error) throw error;
+  
+  const stats = data?.[0] || {
+    total_cards: 0,
+    known_cards: 0,
+    learning_cards: 0,
+    needs_practice_cards: 0,
+    new_cards: 0
+  };
+  
+  return {
+    total_cards: Number(stats.total_cards),
+    known_cards: Number(stats.known_cards),
+    learning_cards: Number(stats.learning_cards),
+    needs_practice_cards: Number(stats.needs_practice_cards),
+    new_cards: Number(stats.new_cards)
+  };
+};
+
 export const getUserStatsDetailed = async (userId: string): Promise<TestSetProgress[]> => {
   if (!supabase) throw new Error('Supabase not configured');
   
   const { data, error } = await supabase.rpc('get_user_stats_detailed', {
     user_uuid: userId
+  });
+  
+  if (error) throw error;
+  
+  return (data || []).map((item: any) => ({
+    test_set_id: item.test_set_id,
+    test_set_name: item.test_set_name,
+    category_name: item.category_name,
+    total_cards: Number(item.total_cards),
+    known_cards: Number(item.known_cards),
+    learning_cards: Number(item.learning_cards),
+    needs_practice_cards: Number(item.needs_practice_cards),
+    new_cards: Number(item.new_cards),
+    last_studied: item.last_studied,
+    completion_percentage: Number(item.completion_percentage || 0)
+  }));
+};
+
+export const getUserStatsDetailedByLanguage = async (userId: string, languageId: string): Promise<TestSetProgress[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase.rpc('get_user_stats_detailed_by_language', {
+    user_uuid: userId,
+    language_uuid: languageId
   });
   
   if (error) throw error;
@@ -665,6 +716,48 @@ export const getUserAnalytics = async (userId: string): Promise<UserAnalytics> =
   
   const { data, error } = await supabase.rpc('get_user_analytics', {
     user_uuid: userId
+  });
+  
+  if (error) throw error;
+  
+  // The function now returns JSON directly
+  const result = data || {
+    total_cards: 0,
+    known_cards: 0,
+    learning_cards: 0,
+    needs_practice_cards: 0,
+    current_streak: 0,
+    longest_streak: 0,
+    total_study_days: 0,
+    total_points: 0,
+    user_level: 1,
+    recent_achievements: [],
+    weekly_progress: [],
+    category_progress: []
+  };
+  
+  return {
+    total_cards: Number(result.total_cards || 0),
+    known_cards: Number(result.known_cards || 0),
+    learning_cards: Number(result.learning_cards || 0),
+    needs_practice_cards: Number(result.needs_practice_cards || 0),
+    current_streak: Number(result.current_streak || 0),
+    longest_streak: Number(result.longest_streak || 0),
+    total_study_days: Number(result.total_study_days || 0),
+    total_points: Number(result.total_points || 0),
+    user_level: Number(result.user_level || 1),
+    recent_achievements: result.recent_achievements || [],
+    weekly_progress: result.weekly_progress || [],
+    category_progress: result.category_progress || []
+  };
+};
+
+export const getUserAnalyticsByLanguage = async (userId: string, languageId: string): Promise<UserAnalytics> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase.rpc('get_user_analytics_by_language', {
+    user_uuid: userId,
+    language_uuid: languageId
   });
   
   if (error) throw error;
@@ -882,6 +975,23 @@ export const getUserVocabList = async (userId: string): Promise<VocabListItem[]>
   const { data, error } = await supabase.rpc('get_user_vocab_list', {
     user_uuid: userId
   });
+  
+  if (error) throw error;
+  return data || [];
+};
+
+export const getUserVocabListByLanguage = async (userId: string, languageId: string): Promise<VocabListItem[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .from('vocab_list_items')
+    .select(`
+      *,
+      vocab_list:user_vocab_lists!inner(user_id)
+    `)
+    .eq('vocab_list.user_id', userId)
+    .eq('language_id', languageId)
+    .order('added_at', { ascending: false });
   
   if (error) throw error;
   return data || [];

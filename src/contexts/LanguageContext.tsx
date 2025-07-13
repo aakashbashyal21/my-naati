@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getUserLanguages } from '../lib/database';
+import { getUserLanguages, setUserLanguageProficiency } from '../lib/database';
 import { UserLanguage } from '../types/language';
 import { supabase } from '../lib/supabase';
 
@@ -8,6 +8,8 @@ interface LanguageContextType {
   selectedLanguageId: string | undefined;
   userLanguages: UserLanguage[];
   setSelectedLanguageId: (languageId: string) => void;
+  setLanguageWithoutUpdate: (languageId: string) => void;
+  loadUserLanguagesOnly: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -30,6 +32,18 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
       setIsLoading(false);
     }
   }, [user]);
+
+  // Load user languages without changing the selected language
+  const loadUserLanguagesOnly = async () => {
+    if (!user) return;
+    
+    try {
+      const languages = await getUserLanguages(user.id);
+      setUserLanguages(languages);
+    } catch (err) {
+      console.error('Failed to load user languages:', err);
+    }
+  };
 
   const loadUserLanguages = async () => {
     if (!user) return;
@@ -85,9 +99,29 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     }
   };
 
-  const handleLanguageChange = (languageId: string) => {
+  const handleLanguageChange = async (languageId: string) => {
     setSelectedLanguageId(languageId);
-    // Here you could also update the user's primary language preference
+    
+    // Update the user's primary language preference in the database
+    if (user) {
+      try {
+        await setUserLanguageProficiency(user.id, languageId, 'beginner', true);
+        // Update local user languages state without reloading
+        setUserLanguages(prev => 
+          prev.map(lang => ({
+            ...lang,
+            is_primary: lang.language_id === languageId
+          }))
+        );
+      } catch (err) {
+        console.error('Failed to update language preference:', err);
+      }
+    }
+  };
+
+  // Function to set language without updating database (for initial load)
+  const setLanguageWithoutUpdate = (languageId: string) => {
+    setSelectedLanguageId(languageId);
   };
 
   return (
@@ -96,6 +130,8 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
         selectedLanguageId,
         userLanguages,
         setSelectedLanguageId: handleLanguageChange,
+        setLanguageWithoutUpdate,
+        loadUserLanguagesOnly,
         isLoading
       }}
     >

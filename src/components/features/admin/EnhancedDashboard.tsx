@@ -20,16 +20,17 @@ import {
   Info
 } from 'lucide-react';
 import { 
-  getUserStats, 
-  getUserStatsDetailed, 
-  getTestSets, 
+  getUserStatsByLanguage, 
+  getUserStatsDetailedByLanguage, 
+  getTestSetsByLanguage, 
   UserStats, 
   TestSet,
   TestSetProgress,
-  getUserAnalytics,
+  getUserAnalyticsByLanguage,
   UserAnalytics
 } from '../../../lib/database';
 import { useAuth } from '../../../hooks/useAuth';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import TargetedAdContainer from '../../advertisements/TargetedAdContainer';
 
 interface NotificationItem {
@@ -43,6 +44,7 @@ interface NotificationItem {
 
 const EnhancedDashboard: React.FC = () => {
   const { user } = useAuth();
+  const { selectedLanguageId, isLoading: languageLoading } = useLanguage();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [detailedStats, setDetailedStats] = useState<TestSetProgress[]>([]);
   const [analytics, setAnalytics] = useState<UserAnalytics | null>(null);
@@ -55,18 +57,18 @@ const EnhancedDashboard: React.FC = () => {
 
   useEffect(() => {
     const loadDashboardData = async () => {
-      if (!user) return;
+      if (!user || !selectedLanguageId || languageLoading) return;
       
       try {
         setLoading(true);
         setError(null);
         
-        // Load comprehensive dashboard data
+        // Load comprehensive dashboard data for the selected language
         const [userStats, detailedUserStats, testSets, userAnalytics] = await Promise.all([
-          getUserStats(user.id),
-          getUserStatsDetailed(user.id),
-          getTestSets(),
-          getUserAnalytics(user.id)
+          getUserStatsByLanguage(user.id, selectedLanguageId),
+          getUserStatsDetailedByLanguage(user.id, selectedLanguageId),
+          getTestSetsByLanguage(selectedLanguageId),
+          getUserAnalyticsByLanguage(user.id, selectedLanguageId)
         ]);
         
         setStats(userStats);
@@ -86,7 +88,7 @@ const EnhancedDashboard: React.FC = () => {
     };
 
     loadDashboardData();
-  }, [user, filterPeriod]);
+  }, [user, selectedLanguageId, languageLoading, filterPeriod]);
 
   const generateNotifications = (
     stats: UserStats, 
