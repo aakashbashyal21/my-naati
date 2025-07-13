@@ -44,20 +44,22 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
 
   useEffect(() => {
     const loadAnalytics = async () => {
-      if (!user || !selectedLanguageId || languageLoading) return;
+      if (!user) return;
       
       try {
         setLoading(true);
         setError(null);
         
-        // Always load user analytics (personal progress) for the selected language
-        const userAnalyticsData = await getUserAnalyticsByLanguage(user.id, selectedLanguageId);
-        setUserAnalytics(userAnalyticsData);
-        
-        // Only load admin analytics for super admins
+        // Load admin analytics for super admins (independent of language)
         if (userRole === 'super_admin') {
           const adminAnalyticsData = await getAdminAnalytics();
           setAdminAnalytics(adminAnalyticsData);
+        }
+        
+        // Load user analytics only for non-super-admin users and if language is selected
+        if (userRole !== 'super_admin' && selectedLanguageId && !languageLoading) {
+          const userAnalyticsData = await getUserAnalyticsByLanguage(user.id, selectedLanguageId);
+          setUserAnalytics(userAnalyticsData);
         }
       } catch (err) {
         console.error('Error loading analytics:', err);
@@ -68,6 +70,21 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
     };
 
     loadAnalytics();
+  }, [user, userRole]);
+
+  // Load user analytics when language changes (only for non-super-admin users)
+  useEffect(() => {
+    if (user && userRole !== 'super_admin' && selectedLanguageId && !languageLoading) {
+      const loadUserAnalytics = async () => {
+        try {
+          const userAnalyticsData = await getUserAnalyticsByLanguage(user.id, selectedLanguageId);
+          setUserAnalytics(userAnalyticsData);
+        } catch (err) {
+          console.error('Error loading user analytics:', err);
+        }
+      };
+      loadUserAnalytics();
+    }
   }, [user, userRole, selectedLanguageId, languageLoading]);
 
   const getIconForAchievement = (iconName: string) => {
@@ -145,7 +162,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
         </div>
         <p className="text-gray-600">
           {userRole === 'super_admin' 
-            ? 'Monitor platform performance and user engagement across the entire system' 
+            ? 'Monitor platform performance, user engagement, and system health across the entire platform' 
             : 'Track your personal learning progress and achievements'
           }
         </p>
@@ -159,12 +176,10 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
         
         {/* Main Content */}
         <div className="flex-1">
-      {/* Personal Analytics Section (Always shown) */}
-      {userAnalytics && (
+      {/* Personal Analytics Section (Only for non-super-admin users) */}
+      {userAnalytics && userRole !== 'super_admin' && (
         <div className="mb-12">
-          {userRole === 'super_admin' && (
-            <h2 className="text-2xl font-semibold text-gray-900 mb-6">Your Personal Progress</h2>
-          )}
+          <h2 className="text-2xl font-semibold text-gray-900 mb-6">Your Personal Progress</h2>
           
           {/* Personal Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -455,7 +470,7 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
           </div>
 
           {/* Platform Analytics Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
             {/* Top Categories */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <div className="flex items-center space-x-3 mb-6">
@@ -526,6 +541,248 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
               )}
             </div>
           </div>
+
+          {/* Additional Super Admin Analytics */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            {/* User Role Distribution */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <Users className="h-6 w-6 text-purple-600" />
+                <h3 className="text-xl font-semibold text-gray-900">User Role Distribution</h3>
+              </div>
+              
+              {adminAnalytics.user_roles && adminAnalytics.user_roles.length > 0 ? (
+                <div className="space-y-4">
+                  {adminAnalytics.user_roles.map((role: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className={`w-3 h-3 rounded-full ${
+                          role.role === 'super_admin' ? 'bg-purple-600' :
+                          role.role === 'admin' ? 'bg-blue-600' :
+                          'bg-gray-600'
+                        }`}></div>
+                        <span className="text-sm font-medium text-gray-900 capitalize">
+                          {role.role.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-900">{role.count}</div>
+                        <div className="text-xs text-gray-500">
+                          {Math.round((role.count / adminAnalytics.total_users) * 100)}%
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No user role data available</p>
+                </div>
+              )}
+            </div>
+
+            {/* Most Active Users */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center space-x-3 mb-6">
+                <Star className="h-6 w-6 text-yellow-600" />
+                <h3 className="text-xl font-semibold text-gray-900">Most Active Users</h3>
+              </div>
+              
+              {adminAnalytics.most_active_users && adminAnalytics.most_active_users.length > 0 ? (
+                <div className="space-y-4">
+                  {adminAnalytics.most_active_users.slice(0, 5).map((user: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-semibold text-blue-600">
+                            {user.email?.charAt(0).toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {user.email || 'Unknown User'}
+                          </div>
+                          <div className="text-xs text-gray-500 capitalize">
+                            {user.role?.replace('_', ' ') || 'user'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-900">{user.total_points || 0} XP</div>
+                        <div className="text-xs text-gray-500">{user.current_streak || 0} day streak</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  <Star className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p>No active user data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* System Health & Performance Metrics */}
+          <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200 mb-8">
+            <div className="flex items-center space-x-3 mb-6">
+              <Database className="h-6 w-6 text-gray-600" />
+              <h3 className="text-xl font-semibold text-gray-900">System Health & Performance</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Study Hours</p>
+                    <p className="text-2xl font-bold text-blue-600">{adminAnalytics.total_study_hours || 0}</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-blue-600" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Cards Studied</p>
+                    <p className="text-2xl font-bold text-green-600">{adminAnalytics.total_cards_studied || 0}</p>
+                  </div>
+                  <BookOpen className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Avg User Streak</p>
+                    <p className="text-2xl font-bold text-orange-600">{Math.round(adminAnalytics.average_streak || 0)}</p>
+                  </div>
+                  <Flame className="h-8 w-8 text-orange-600" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Content Ratio</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      {adminAnalytics.total_flashcards && adminAnalytics.total_users 
+                        ? Math.round(adminAnalytics.total_flashcards / adminAnalytics.total_users) 
+                        : 0}
+                    </p>
+                  </div>
+                  <Target className="h-8 w-8 text-purple-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Platform Growth & Trends */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center space-x-3 mb-6">
+              <TrendingUp className="h-6 w-6 text-indigo-600" />
+              <h3 className="text-xl font-semibold text-gray-900">Platform Growth & Trends</h3>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg border border-blue-200">
+                <div className="text-3xl font-bold text-blue-600 mb-2">
+                  {adminAnalytics.new_users_this_month || 0}
+                </div>
+                <div className="text-sm font-medium text-blue-800">New Users This Month</div>
+                <div className="text-xs text-blue-600 mt-1">
+                  {adminAnalytics.total_users > 0 
+                    ? `${Math.round((adminAnalytics.new_users_this_month / adminAnalytics.total_users) * 100)}% growth`
+                    : '0% growth'
+                  }
+                </div>
+              </div>
+
+              <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-lg border border-green-200">
+                <div className="text-3xl font-bold text-green-600 mb-2">
+                  {adminAnalytics.active_users_week || 0}
+                </div>
+                <div className="text-sm font-medium text-green-800">Active Users This Week</div>
+                <div className="text-xs text-green-600 mt-1">
+                  {adminAnalytics.total_users > 0 
+                    ? `${Math.round((adminAnalytics.active_users_week / adminAnalytics.total_users) * 100)}% engagement`
+                    : '0% engagement'
+                  }
+                </div>
+              </div>
+
+              <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg border border-purple-200">
+                <div className="text-3xl font-bold text-purple-600 mb-2">
+                  {adminAnalytics.total_study_sessions || 0}
+                </div>
+                <div className="text-sm font-medium text-purple-800">Total Study Sessions</div>
+                <div className="text-xs text-purple-600 mt-1">
+                  {adminAnalytics.total_users > 0 
+                    ? `${Math.round(adminAnalytics.total_study_sessions / adminAnalytics.total_users)} per user`
+                    : '0 per user'
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Key Insights for Super Admins */}
+          <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
+            <div className="flex items-center space-x-3 mb-6">
+              <Shield className="h-6 w-6 text-purple-600" />
+              <h3 className="text-xl font-semibold text-gray-900">Key Platform Insights</h3>
+              <span className="px-3 py-1 bg-purple-100 text-purple-800 text-xs font-semibold rounded-full">
+                SUPER ADMIN
+              </span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="text-sm font-medium text-gray-600 mb-1">User Retention</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {adminAnalytics.total_users > 0 
+                    ? `${Math.round((adminAnalytics.active_users_week / adminAnalytics.total_users) * 100)}%`
+                    : '0%'
+                  }
+                </div>
+                <div className="text-xs text-gray-500">Weekly active rate</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="text-sm font-medium text-gray-600 mb-1">Content Utilization</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {adminAnalytics.total_flashcards > 0 
+                    ? `${Math.round((adminAnalytics.total_cards_studied / adminAnalytics.total_flashcards) * 100)}%`
+                    : '0%'
+                  }
+                </div>
+                <div className="text-xs text-gray-500">Cards studied vs available</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="text-sm font-medium text-gray-600 mb-1">Study Efficiency</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {adminAnalytics.total_study_hours > 0 
+                    ? `${Math.round(adminAnalytics.total_cards_studied / adminAnalytics.total_study_hours)}`
+                    : '0'
+                  }
+                </div>
+                <div className="text-xs text-gray-500">Cards per study hour</div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-purple-200">
+                <div className="text-sm font-medium text-gray-600 mb-1">Platform Health</div>
+                <div className="text-lg font-bold text-purple-600">
+                  {adminAnalytics.total_users > 0 && adminAnalytics.total_flashcards > 0 
+                    ? 'Good'
+                    : 'Setup Required'
+                  }
+                </div>
+                <div className="text-xs text-gray-500">Content to user ratio</div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
         </div>
@@ -557,7 +814,9 @@ const Analytics: React.FC<AnalyticsProps> = ({ userRole }) => {
           </div>
           <span className="text-xs text-gray-500">
             {userRole === 'super_admin' 
-              ? 'Full platform analytics access' 
+              ? 'Full platform analytics & system monitoring' 
+              : userRole === 'admin'
+              ? 'Limited admin analytics access'
               : 'Personal analytics only'
             }
           </span>

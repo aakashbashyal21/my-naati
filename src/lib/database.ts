@@ -6,6 +6,7 @@ export interface UserProfile {
   id: string;
   email: string;
   role: 'user' | 'admin' | 'super_admin';
+  preferred_language_id?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -1155,4 +1156,30 @@ export const getTestSetsByLanguage = async (languageId: string): Promise<TestSet
   
   if (error) throw error;
   return data || [];
+};
+
+// Preferred Language Functions
+export const getUserPreferredLanguage = async (userId: string): Promise<string | null> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('preferred_language_id')
+    .eq('id', userId)
+    .maybeSingle();
+  
+  if (error) throw error;
+  return data?.preferred_language_id || null;
+};
+
+export const setUserPreferredLanguage = async (userId: string, languageId: string): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  
+  const { error } = await supabase
+    .rpc('update_user_preferred_language', {
+      user_id: userId,
+      language_id: languageId
+    });
+  
+  if (error) throw error;
 };

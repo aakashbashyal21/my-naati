@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { getUserLanguages, setUserLanguageProficiency } from '../lib/database';
+import { getUserLanguages, setUserLanguageProficiency, getUserPreferredLanguage, setUserPreferredLanguage } from '../lib/database';
 import { UserLanguage } from '../types/language';
 import { supabase } from '../lib/supabase';
 
@@ -50,10 +50,24 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
     
     try {
       setIsLoading(true);
-      const languages = await getUserLanguages(user.id);
+      const [languages, preferredLanguageId] = await Promise.all([
+        getUserLanguages(user.id),
+        getUserPreferredLanguage(user.id)
+      ]);
+      
       setUserLanguages(languages);
       
-      // Set primary language as selected
+      // First, try to use the user's preferred language
+      if (preferredLanguageId) {
+        // Check if the preferred language is in the user's available languages
+        const preferredLanguage = languages.find(lang => lang.language_id === preferredLanguageId);
+        if (preferredLanguage) {
+          setSelectedLanguageId(preferredLanguageId);
+          return;
+        }
+      }
+      
+      // If no preferred language or it's not available, use primary language
       const primaryLanguage = languages.find(lang => lang.is_primary);
       if (primaryLanguage) {
         setSelectedLanguageId(primaryLanguage.language_id);
@@ -71,6 +85,8 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
               .single();
             if (englishLang) {
               setSelectedLanguageId(englishLang.id);
+              // Set this as the user's preferred language for future sessions
+              await setUserPreferredLanguage(user.id, englishLang.id);
             }
           }
         } catch (err) {
@@ -102,17 +118,32 @@ export const LanguageProvider: React.FC<LanguageProviderProps> = ({ children }) 
   const handleLanguageChange = async (languageId: string) => {
     setSelectedLanguageId(languageId);
     
-    // Update the user's primary language preference in the database
+    // Update the user's preferred language in the database
     if (user) {
       try {
-        await setUserLanguageProficiency(user.id, languageId, 'beginner', true);
-        // Update local user languages state without reloading
-        setUserLanguages(prev => 
-          prev.map(lang => ({
-            ...lang,
-            is_primary: lang.language_id === languageId
-          }))
-        );
+        await setUserPreferredLanguage(user.id, languageId);
+        
+        // Check if the user already has this language in their proficiencies
+        const existingLanguage = userLanguages.find(lang => lang.language_id === languageId);
+        
+        if (existingLanguage) {
+          // Update the user's primary language preference in language_proficiencies
+          await setUserLanguageProficiency(user.id, languageId, 'beginner', true);
+          
+          // Update local user languages state without reloading
+          setUserLanguages(prev => 
+            prev.map(lang => ({
+              ...lang,
+              is_primary: lang.language_id === languageId
+            }))
+          );
+        } else {
+          // Add this language to the user's proficiencies
+          await setUserLanguageProficiency(user.id, languageId, 'beginner', true);
+          
+          // Reload user languages to get the updated list
+          await loadUserLanguagesOnly();
+        }
       } catch (err) {
         console.error('Failed to update language preference:', err);
       }

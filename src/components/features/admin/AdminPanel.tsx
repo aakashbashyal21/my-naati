@@ -21,10 +21,12 @@ import { CategoryManagement } from './CategoryManagement';
 import { TestSetManagement } from './TestSetManagement';
 import { UserManagement } from './UserManagement';
 import LanguageManagement from './LanguageManagement';
+import Analytics from './Analytics';
 import { AdminTabs, AdminTab } from './AdminTabs';
 import LoadingSpinner from '../../shared/ui/LoadingSpinner';
 import ErrorBoundary from '../../shared/ui/ErrorBoundary';
 import { useToast } from '../../../hooks/useToast';
+import { useAuth } from '../../../hooks/useAuth';
 import { CategoryFormData, TestSetFormData, UserRole } from '../../../utils/validation';
 
 const AdminPanel: React.FC = () => {
@@ -36,10 +38,28 @@ const AdminPanel: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   const { showToast } = useToast();
+  const { user } = useAuth();
+  const [userRole, setUserRole] = useState<'user' | 'admin' | 'super_admin'>('user');
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      // Get user role from the users list
+      const currentUser = users.find(u => u.id === user.id);
+      console.log('AdminPanel: Current user:', user.id, 'Found user in list:', currentUser);
+      if (currentUser) {
+        console.log('AdminPanel: Setting user role to:', currentUser.role);
+        setUserRole(currentUser.role);
+      } else {
+        // If user not found in list, try to get from auth context or default to super_admin
+        console.log('AdminPanel: User not found in list, defaulting to super_admin');
+        setUserRole('super_admin');
+      }
+    }
+  }, [user, users]);
 
   const loadData = async () => {
     try {
@@ -180,6 +200,10 @@ const AdminPanel: React.FC = () => {
 
         {activeTab === 'languages' && (
           <LanguageManagement />
+        )}
+
+        {activeTab === 'analytics' && (
+          <Analytics userRole={userRole} />
         )}
       </div>
     </ErrorBoundary>

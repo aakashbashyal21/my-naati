@@ -4,6 +4,7 @@ import { TestSet, Category, getActiveLanguages } from '../../../lib/database';
 import { Button } from '../../../components/shared/ui/Button';
 import { Input } from '../../../components/shared/ui/Input';
 import { useToast } from '../../../hooks/useToast';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { testSetFormSchema, TestSetFormData } from '../../../utils/validation';
 import { sanitizeInput } from '../../../utils/sanitization';
 import { Language } from '../../../types/language';
@@ -41,6 +42,7 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   
   const { showToast } = useToast();
+  const { selectedLanguageId: userSelectedLanguageId } = useLanguage();
 
   // Load languages on component mount
   useEffect(() => {
@@ -48,16 +50,17 @@ export const TestSetManagement: React.FC<TestSetManagementProps> = ({
       try {
         const activeLanguages = await getActiveLanguages();
         setLanguages(activeLanguages);
-        // Default to first language if available
+        // Default to user's selected language if available, otherwise first language
         if (activeLanguages.length > 0 && !selectedLanguageId) {
-          setSelectedLanguageId(activeLanguages[0]?.id || '');
+          const userLanguage = activeLanguages.find(lang => lang.id === userSelectedLanguageId);
+          setSelectedLanguageId(userLanguage?.id || activeLanguages[0]?.id || '');
         }
       } catch (error) {
         showToast('Failed to load languages', 'error');
       }
     };
     loadLanguages();
-  }, []);
+  }, [userSelectedLanguageId]);
 
   // Filter categories and test sets by selected language
   useEffect(() => {

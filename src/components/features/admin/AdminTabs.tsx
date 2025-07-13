@@ -1,7 +1,7 @@
 import React from 'react';
-import { FolderPlus, FileText, Users, Globe } from 'lucide-react';
+import { FolderPlus, FileText, Users, Globe, BarChart3 } from 'lucide-react';
 
-export type AdminTab = 'categories' | 'testsets' | 'users' | 'languages';
+export type AdminTab = 'categories' | 'testsets' | 'users' | 'languages' | 'analytics';
 
 interface AdminTabsProps {
   activeTab: AdminTab;
@@ -12,7 +12,8 @@ const tabs = [
   { id: 'categories' as const, label: 'Categories', icon: FolderPlus },
   { id: 'testsets' as const, label: 'Test Sets', icon: FileText },
   { id: 'users' as const, label: 'Users', icon: Users },
-  { id: 'languages' as const, label: 'Languages', icon: Globe }
+  { id: 'languages' as const, label: 'Languages', icon: Globe },
+  { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 }
 ];
 
 export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, onTabChange }) => {

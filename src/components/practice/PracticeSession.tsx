@@ -70,6 +70,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
   const [showBetweenSessionAd, setShowBetweenSessionAd] = useState(false);
   const [isInVocabList, setIsInVocabList] = useState(false);
   const [addingToVocabList, setAddingToVocabList] = useState(false);
+  const [showCompletionDialog, setShowCompletionDialog] = useState(false);
 
   // Load progress data and saved session state
   useEffect(() => {
@@ -196,6 +197,9 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
     if (currentIndex < shuffledCards.length - 1) {
       setIsFlipped(false);
       setCurrentIndex(currentIndex + 1);
+    } else {
+      // Show completion dialog when reaching the last card
+      setShowCompletionDialog(true);
     }
   }, [currentIndex, shuffledCards.length]);
 
@@ -206,7 +210,37 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
     }
   }, [currentIndex]);
 
+  const handleRestartSet = useCallback(() => {
+    setShowCompletionDialog(false);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    // Reset session stats for new session
+    setSessionStats({
+      studied: 0,
+      known: 0,
+      needsPractice: 0
+    });
+    setSessionStartTime(new Date());
+  }, []);
+
+  const handleBackToCategories = useCallback(() => {
+    setShowCompletionDialog(false);
+    onBack();
+  }, [onBack]);
+
   const handleKeyPress = useCallback((e: KeyboardEvent) => {
+    if (showCompletionDialog) {
+      // Handle keyboard shortcuts for completion dialog
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleRestartSet();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        handleBackToCategories();
+      }
+      return;
+    }
+    
     if (e.key === 'ArrowRight' || e.key === ' ') {
       e.preventDefault();
       if (isFlipped) {
@@ -221,7 +255,7 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
       e.preventDefault();
       setIsReversed(!isReversed);
     }
-  }, [isFlipped, nextCard, prevCard, isReversed]);
+  }, [isFlipped, nextCard, prevCard, isReversed, showCompletionDialog, handleRestartSet, handleBackToCategories]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
@@ -372,6 +406,60 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
             </div>
           }
         />
+      )}
+
+      {/* Completion Dialog */}
+      {showCompletionDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center">
+            <div className="mb-6">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trophy className="h-8 w-8 text-green-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">🎉 Set Completed!</h2>
+              <p className="text-gray-600 mb-6">
+                Congratulations! You've completed the "{testSetName}" test set.
+              </p>
+              
+              {/* Session Summary */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 mb-3">Session Summary</h3>
+                <div className="grid grid-cols-3 gap-4 text-xs">
+                  <div>
+                    <div className="text-lg font-bold text-blue-600">{sessionStats.studied}</div>
+                    <div className="text-gray-500">Studied</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-green-600">{sessionStats.known}</div>
+                    <div className="text-gray-500">Known</div>
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-yellow-600">{sessionStats.needsPractice}</div>
+                    <div className="text-gray-500">Practice</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex flex-col space-y-3">
+              <button
+                onClick={handleRestartSet}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Restart This Set</span>
+              </button>
+              
+              <button
+                onClick={handleBackToCategories}
+                className="w-full bg-gray-100 text-gray-700 py-3 px-6 rounded-lg font-medium hover:bg-gray-200 transition-colors flex items-center justify-center space-x-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Test List</span>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       <div className="max-w-4xl mx-auto">
@@ -655,16 +743,15 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
           
           <button
             onClick={nextCard}
-            disabled={currentIndex === shuffledCards.length - 1}
             className={`
               flex items-center space-x-2 px-6 py-3 rounded-lg font-medium transition-colors
               ${currentIndex === shuffledCards.length - 1 
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                ? 'bg-green-600 text-white hover:bg-green-700' 
                 : 'bg-blue-600 text-white hover:bg-blue-700'
               }
             `}
           >
-            <span>Next</span>
+            <span>{currentIndex === shuffledCards.length - 1 ? 'Complete' : 'Next'}</span>
             <ChevronRight className="h-4 w-4" />
           </button>
         </div>
@@ -708,6 +795,12 @@ const PracticeSession: React.FC<PracticeSessionProps> = ({
             <span>Space/→: Flip or Next</span>
             <span>←: Previous</span>
             <span>R: Reverse Mode</span>
+            {showCompletionDialog && (
+              <>
+                <span>Enter: Restart Set</span>
+                <span>Esc: Back to List</span>
+              </>
+            )}
           </div>
         </div>
         
