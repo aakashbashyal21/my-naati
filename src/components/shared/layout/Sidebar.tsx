@@ -11,7 +11,8 @@ import {
   Trophy,
   Menu,
   X,
-  List
+  List,
+  Volume2
 } from 'lucide-react';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -54,6 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, path: '/dashboard' },
     { id: 'analytics', label: 'Analytics', icon: BarChart3, path: '/dashboard/analytics' },
     { id: 'practice', label: 'Vocab Practice', icon: BookOpen, path: '/dashboard/practice' },
+    { id: 'audio-practice', label: 'Audio Practice', icon: Volume2, path: '/dashboard/audio-practice' },
     { id: 'vocab-list', label: 'My Vocab List', icon: List, path: '/dashboard/vocab-list' },
     { id: 'achievements', label: 'Achievements', icon: Trophy, path: '/dashboard/achievements' },
   ];

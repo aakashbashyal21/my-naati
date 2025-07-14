@@ -1,7 +1,8 @@
 import React from 'react';
-import { FolderPlus, FileText, Users, Globe, BarChart3 } from 'lucide-react';
+import { FolderPlus, FileText, Users, Globe, BarChart3, AudioLines } from 'lucide-react';
+import AudioDialogManagement from './AudioDialogManagement';
 
-export type AdminTab = 'categories' | 'testsets' | 'users' | 'languages' | 'analytics';
+export type AdminTab = 'categories' | 'testsets' | 'users' | 'languages' | 'analytics' | 'audio-dialogs';
 
 interface AdminTabsProps {
   activeTab: AdminTab;
@@ -13,7 +14,8 @@ const tabs = [
   { id: 'testsets' as const, label: 'Test Sets', icon: FileText },
   { id: 'users' as const, label: 'Users', icon: Users },
   { id: 'languages' as const, label: 'Languages', icon: Globe },
-  { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 }
+  { id: 'analytics' as const, label: 'Analytics', icon: BarChart3 },
+  { id: 'audio-dialogs' as const, label: 'Audio Dialogs', icon: AudioLines },
 ];
 
 export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, onTabChange }) => {
@@ -42,6 +44,7 @@ export const AdminTabs: React.FC<AdminTabsProps> = ({ activeTab, onTabChange }) 
           })}
         </nav>
       </div>
+      {activeTab === 'audio-dialogs' && <AudioDialogManagement />}
     </div>
   );
 }; 

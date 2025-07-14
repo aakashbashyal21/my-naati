@@ -19,6 +19,7 @@ import AdminPanel from '../components/features/admin/AdminPanel';
 import AdManagement from '../components/advertisements/AdManagement';
 import AdAnalyticsDashboard from '../components/advertisements/AdAnalyticsDashboard';
 import RoleChecker from '../components/features/admin/RoleChecker';
+import AudioPractice from '../components/features/practice/AudioPractice';
 
 // Middleware Components
 import ProtectedRoute from './ProtectedRoute';
@@ -127,6 +128,10 @@ const createRouter = (user: any) => {
               <AdAnalyticsDashboard />
             </AdminRoute>
           )
+        },
+        {
+          path: 'audio-practice',
+          element: <AudioPractice userId={user?.id || ''} />
         }
       ]
     },

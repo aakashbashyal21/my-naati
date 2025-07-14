@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { VocabListItem } from '../types/flashcard';
 import { Language, UserLanguage } from '../types/language';
+import { AudioDialog, AudioChunk } from '../types/audio';
 
 export interface UserProfile {
   id: string;
@@ -1182,4 +1183,101 @@ export const setUserPreferredLanguage = async (userId: string, languageId: strin
     });
   
   if (error) throw error;
+};
+
+// Audio Dialog Practice Feature
+// --- Audio Dialogs ---
+export const getAudioDialogs = async (): Promise<AudioDialog[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_dialogs')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const createAudioDialog = async (dialog: Partial<AudioDialog>): Promise<AudioDialog> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_dialogs')
+    .insert([dialog])
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateAudioDialog = async (id: string, updates: Partial<AudioDialog>): Promise<AudioDialog> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_dialogs')
+    .update(updates)
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteAudioDialog = async (id: string): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('audio_dialogs')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+};
+
+// --- Audio Chunks ---
+export const getAudioChunks = async (dialogId: string): Promise<AudioChunk[]> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_chunks')
+    .select('*')
+    .eq('dialog_id', dialogId)
+    .order('chunk_order', { ascending: true });
+  if (error) throw error;
+  return data || [];
+};
+
+export const createAudioChunk = async (chunk: Partial<AudioChunk>): Promise<AudioChunk> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_chunks')
+    .insert([chunk])
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateAudioChunk = async (id: string, updates: Partial<AudioChunk>): Promise<AudioChunk> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('audio_chunks')
+    .update(updates)
+    .eq('id', id)
+    .single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteAudioChunk = async (id: string): Promise<void> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('audio_chunks')
+    .delete()
+    .eq('id', id);
+  if (error) throw error;
+};
+
+// --- Audio Upload ---
+export const uploadAudioFile = async (file: File, dialogId: string, chunkOrder: number): Promise<string> => {
+  if (!supabase) throw new Error('Supabase not configured');
+  const filePath = `dialog-${dialogId}/chunk-${chunkOrder}-${Date.now()}-${file.name}`;
+  const { data, error } = await supabase.storage
+    .from('audio-dialogs')
+    .upload(filePath, file, { upsert: true });
+  if (error) throw error;
+  // Get public URL
+  const { data: urlData } = supabase.storage.from('audio-dialogs').getPublicUrl(filePath);
+  return urlData.publicUrl;
 };

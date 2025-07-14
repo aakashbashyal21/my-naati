@@ -11,6 +11,7 @@ export default defineConfig({
     headers: {
       'Content-Security-Policy': [
         "default-src 'self'",
+        "media-src 'self' https://dfkgalvbfnbqfkuitrst.supabase.co",
         "script-src 'self' 'unsafe-inline'",
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: https:",
