@@ -38,6 +38,9 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
   const [showDialogModal, setShowDialogModal] = useState(false);
   const [dialogInitialized, setDialogInitialized] = useState(false);
   const [shouldAutoPlayNext, setShouldAutoPlayNext] = useState(false);
+  const [showGrandList, setShowGrandList] = useState(false);
+  const [grandListIndex, setGrandListIndex] = useState(0);
+  const [isPlayingGrandList, setIsPlayingGrandList] = useState(false);
   
   // Refs
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -126,13 +129,46 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
       const handleEnded = () => {
         setIsPlaying(false);
         setCurrentAudio(null);
-        handleChunkCompletion();
+        
+        // Auto-advance grand list if active
+        if (showGrandList && isPlayingGrandList) {
+          setTimeout(() => {
+            nextGrandListItem();
+          }, 1000);
+        } else if (isPlaybackMode) {
+          // Auto-advance playback mode
+          setTimeout(() => {
+            playNextInPlayback();
+          }, 1000);
+        } else {
+          handleChunkCompletion();
+        }
       };
       
       currentAudio.addEventListener('ended', handleEnded);
       return () => currentAudio.removeEventListener('ended', handleEnded);
     }
-  }, [currentAudio]);
+  }, [currentAudio, showGrandList, isPlayingGrandList, isPlaybackMode]);
+
+  // Handle playback audio completion
+  useEffect(() => {
+    if (playbackAudioRef.current) {
+      const handleEnded = () => {
+        setIsPlaying(false);
+        playbackAudioRef.current = null;
+        
+        // Auto-advance if in playback mode
+        if (isPlaybackMode) {
+          setTimeout(() => {
+            playNextInPlayback();
+          }, 1000);
+        }
+      };
+      
+      playbackAudioRef.current.addEventListener('ended', handleEnded);
+      return () => playbackAudioRef.current?.removeEventListener('ended', handleEnded);
+    }
+  }, [playbackAudioRef.current, isPlaybackMode]);
 
   // Cleanup effect for recording timers
   useEffect(() => {
@@ -366,40 +402,121 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
     }
     
     const audio = new Audio(recording.audioUrl);
-    audio.play();
-    playbackAudioRef.current = audio;
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+      playbackAudioRef.current = null;
+    });
+    
+    audio.play().then(() => {
+      setIsPlaying(true);
+      playbackAudioRef.current = audio;
+    }).catch(err => {
+      console.error('Failed to play recording:', err);
+      setError('Failed to play recording');
+    });
   };
 
   const startPlaybackMode = () => {
     setIsPlaybackMode(true);
     setPlaybackIndex(0);
+    setShowGrandList(true); // Use the grand list modal for playback
     playNextInPlayback();
   };
 
   const playNextInPlayback = () => {
-    if (playbackIndex >= chunks.length * 2) return; // Original + recording for each chunk
-    
-    const chunkIndex = Math.floor(playbackIndex / 2);
-    const isOriginal = playbackIndex % 2 === 0;
-    
-    if (isOriginal) {
-      // Play original chunk
-      const chunk = chunks[chunkIndex];
-      if (chunk) {
-        playChunk(chunk);
-      }
+    const grandList = createGrandList();
+    if (playbackIndex >= grandList.length) {
+      // End of playback
+      setIsPlaybackMode(false);
+      setPlaybackIndex(0);
+      setShowGrandList(false);
+      return;
+    }
+
+    const item = grandList[playbackIndex];
+    if (!item) return;
+
+    if (item.type === 'original') {
+      playChunk(item.chunk);
     } else {
-      // Play user recording
-      const chunk = chunks[chunkIndex];
-      if (chunk) {
-        const recording = userRecordings.find(r => r.chunkId === chunk.id);
-        if (recording) {
-          playBackRecording(recording);
-        }
-      }
+      playBackRecording(item.recording);
     }
     
     setPlaybackIndex(playbackIndex + 1);
+  };
+
+  // Create grand list of all chunks and recordings in sequence
+  const createGrandList = () => {
+    const grandList = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      if (!chunk) continue;
+      
+      const recording = userRecordings.find(r => r.chunkId === chunk.id);
+      
+      // Add original chunk
+      grandList.push({
+        type: 'original' as const,
+        chunk,
+        index: i,
+        title: `Chunk ${i + 1} - ${getSpeakerName(chunk.speaker)}`
+      });
+      
+      // Add user recording if available
+      if (recording) {
+        grandList.push({
+          type: 'recording' as const,
+          recording,
+          chunk,
+          index: i,
+          title: `Your Recording ${i + 1}`
+        });
+      }
+    }
+    return grandList;
+  };
+
+  const startGrandListPlayback = () => {
+    setShowGrandList(true);
+    setGrandListIndex(0);
+    setIsPlayingGrandList(true);
+    playGrandListItem(0);
+  };
+
+  const playGrandListItem = (index: number) => {
+    const grandList = createGrandList();
+    if (index >= grandList.length) {
+      // End of grand list
+      setIsPlayingGrandList(false);
+      setGrandListIndex(0);
+      return;
+    }
+
+    const item = grandList[index];
+    if (!item) return;
+    
+    setGrandListIndex(index);
+
+    if (item.type === 'original') {
+      playChunk(item.chunk);
+    } else {
+      playBackRecording(item.recording);
+    }
+  };
+
+  const nextGrandListItem = () => {
+    const grandList = createGrandList();
+    if (grandListIndex < grandList.length - 1) {
+      playGrandListItem(grandListIndex + 1);
+    } else {
+      setIsPlayingGrandList(false);
+    }
+  };
+
+  const previousGrandListItem = () => {
+    if (grandListIndex > 0) {
+      playGrandListItem(grandListIndex - 1);
+    }
   };
 
   const getCurrentChunk = () => chunks[currentChunkIndex];
@@ -551,8 +668,17 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
             <div className="flex items-center gap-4">
               {!isPlaybackMode && userRecordings.length === chunks.length && (
                 <button
+                  onClick={startGrandListPlayback}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Play Complete Session
+                </button>
+              )}
+              {!isPlaybackMode && userRecordings.length === chunks.length && (
+                <button
                   onClick={startPlaybackMode}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                 >
                   <RotateCcw className="h-4 w-4 inline mr-2" />
                   Playback All
@@ -590,7 +716,7 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
           )}
 
           {/* Main Audio Player */}
-          {!isRecording && !showCountdown && (
+          {!isRecording && !showCountdown && !showGrandList && (
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -654,6 +780,166 @@ const AudioPractice: React.FC<AudioPracticeProps> = ({ userId }) => {
                 >
                   <SkipForward className="h-5 w-5" />
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Grand List Interface */}
+          {showGrandList && (
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 mb-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-gray-900">
+                    {isPlaybackMode ? 'Sequential Playback' : 'Complete Session Playback'}
+                  </h3>
+                  <p className="text-gray-600">
+                    {isPlaybackMode 
+                      ? 'Playing all chunks and recordings in sequence' 
+                      : 'Original chunks and your recordings in sequence'
+                    }
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowGrandList(false);
+                    setIsPlayingGrandList(false);
+                    setIsPlaybackMode(false);
+                    if (currentAudio) {
+                      currentAudio.pause();
+                      setCurrentAudio(null);
+                    }
+                    if (playbackAudioRef.current) {
+                      playbackAudioRef.current.pause();
+                      playbackAudioRef.current = null;
+                    }
+                  }}
+                  className="px-3 py-1 text-gray-500 hover:text-gray-700"
+                >
+                  ✕ Close
+                </button>
+              </div>
+
+              {/* Grand List Progress */}
+              {(() => {
+                const grandList = createGrandList();
+                const currentIndex = isPlaybackMode ? playbackIndex - 1 : grandListIndex;
+                const currentItem = grandList[currentIndex];
+                return (
+                  <div className="mb-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        {currentItem?.type === 'original' ? (
+                          getSpeakerIcon(currentItem.chunk.speaker)
+                        ) : (
+                          <Mic className="h-4 w-4 text-green-600" />
+                        )}
+                        <span className="font-semibold text-gray-900">
+                          {currentItem?.title || 'Loading...'}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {isPlaybackMode ? playbackIndex : grandListIndex + 1} of {grandList.length}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Grand List Progress Bar */}
+                    <div className="w-full bg-gray-200 rounded-full h-4 mb-4">
+                      <div
+                        className="bg-green-600 h-4 rounded-full transition-all duration-300"
+                        style={{ 
+                          width: `${isPlaybackMode 
+                            ? (playbackIndex / grandList.length) * 100 
+                            : ((grandListIndex + 1) / grandList.length) * 100
+                          }%` 
+                        }}
+                      ></div>
+                    </div>
+
+                    {/* Grand List Controls */}
+                    <div className="flex items-center justify-center gap-4">
+                      <button
+                        onClick={isPlaybackMode ? () => {} : previousGrandListItem}
+                        disabled={isPlaybackMode || grandListIndex === 0}
+                        className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <SkipBack className="h-5 w-5" />
+                      </button>
+                      
+                      <button
+                        onClick={isPlaying ? pauseAudio : () => {
+                          if (isPlaybackMode) {
+                            playNextInPlayback();
+                          } else {
+                            playGrandListItem(grandListIndex);
+                          }
+                        }}
+                        className="p-4 rounded-full bg-green-600 text-white shadow-lg hover:bg-green-700"
+                      >
+                        {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+                      </button>
+                      
+                      <button
+                        onClick={isPlaybackMode ? () => {} : nextGrandListItem}
+                        disabled={isPlaybackMode || grandListIndex >= grandList.length - 1}
+                        className="p-2 rounded-full bg-white shadow-sm hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        <SkipForward className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Grand List Items */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                {createGrandList().map((item, index) => (
+                  <div
+                    key={`${item.type}-${item.index}-${index}`}
+                    className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                      index === grandListIndex
+                        ? 'border-green-500 bg-green-50'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                    onClick={() => playGrandListItem(index)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        {item.type === 'original' ? (
+                          getSpeakerIcon(item.chunk.speaker)
+                        ) : (
+                          <Mic className="h-4 w-4 text-green-600" />
+                        )}
+                        <span className="font-medium text-sm">{item.title}</span>
+                      </div>
+                      <span className="text-xs text-gray-500">#{index + 1}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (item.type === 'original') {
+                            playChunk(item.chunk);
+                          } else {
+                            playBackRecording(item.recording);
+                          }
+                        }}
+                        className="p-1 rounded hover:bg-gray-100"
+                      >
+                        <Play className="h-4 w-4" />
+                      </button>
+                      <div className="flex-1">
+                        <audio
+                          src={item.type === 'original' ? item.chunk.audio_url : item.recording.audioUrl}
+                          controls
+                          className="w-full h-8"
+                          onPlay={() => setIsPlaying(true)}
+                          onPause={() => setIsPlaying(false)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
